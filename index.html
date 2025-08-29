@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solaris — Konfigurator pojazdu</title>
+  <style>
+    :root{
+      --bg:#0b0f16;
+      --card:#111827;
+      --accent:#12b981;
+      --muted:#9aa3af;
+      --text:#e5e7eb;
+      --text-strong:#f9fafb;
+      --danger:#ef4444;
+      --warn:#f59e0b;
+      --border:#1f2937;
+      --chip:#0f172a;
+      --chip-on:#063b2b;
+      --focus: 0 0 0 3px rgba(18,185,129,.35);
+      --radius:14px;
+      --radius-sm:10px;
+      --shadow-lg: 0 18px 50px rgba(0,0,0,.35);
+      --shadow-md: 0 10px 30px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font: 16px/1.45 ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #1b2640 0, rgba(27,38,64,0) 60%),
+        radial-gradient(900px 700px at 10% -10%, #0f3c35 0, rgba(15,60,53,0) 55%),
+        linear-gradient(180deg, #05070b, #0a0e16 40%, #0b0f16);
+      min-height:100%;
+    }
+    header{ padding:38px 20px 24px; text-align:center; }
+    .title{
+      font-size: clamp(24px, 4vw, 40px);
+      letter-spacing:.3px;
+      color:var(--text-strong);
+      margin:0 0 8px;
+      font-weight:800;
+    }
+    .subtitle{ margin:0 auto; max-width: 880px; color:var(--muted); font-size: 15px; }
+    main{ max-width: 1200px; margin: 24px auto 60px; padding: 0 20px; }
+    .grid{ display:grid; grid-template-columns: 1.15fr .85fr; gap: 24px; }
+    @media (max-width: 1024px){ .grid{ grid-template-columns:1fr } }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      overflow:hidden;
+    }
+    .card .section{ padding: 20px; border-top: 1px solid var(--border); }
+    .card .section:first-child{ border-top:0 }
+    .section h3{ margin:0 0 14px; font-size: 16px; font-weight: 800; color: var(--text-strong); letter-spacing:.2px; }
+    .hint{ color: var(--muted); font-size: 13px; margin: -6px 0 12px; }
+
+    /* Steps */
+    .steps{
+      display:flex; flex-wrap:wrap; gap: 10px; padding: 16px; border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(18,185,129,.06), transparent 40%);
+    }
+    .step{
+      display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius: 999px;
+      background: #0a1324; color: var(--text); border:1px solid var(--border); font-weight:700; font-size: 13px;
+    }
+    .step .num{
+      width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background: var(--chip);
+      color: var(--text); border:1px solid var(--border); font-size: 12px; font-weight:800;
+    }
+    .step.active{ border-color: rgba(18,185,129,.5) }
+    .step.active .num{ background: var(--chip-on); color:#bff3df; border-color: rgba(18,185,129,.45) }
+
+    /* Model cards */
+    .models{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 640px){ .models{ grid-template-columns: 1fr; } }
+    .model{
+      position:relative; border:1px solid var(--border); border-radius: var(--radius-sm); padding: 14px;
+      background: #0b1324; display:flex; flex-direction:column; gap:6px; cursor:pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .2s ease;
+    }
+    .model:hover{ transform: translateY(-2px); border-color: rgba(18,185,129,.45); box-shadow: var(--shadow-md);}
+    .model input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .model .name{ font-weight:800; letter-spacing:.3px; }
+    .model .desc{ color:var(--muted); font-size:13px; }
+    .model.selected{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(18,185,129,.35) inset, var(--shadow-md); }
+
+    /* Generation & length pills */
+    .pills{ display:flex; flex-wrap:wrap; gap:10px; }
+    .pill{
+      position:relative; display:inline-flex; align-items:center; gap:10px; padding:10px 14px; background:#0a1324;
+      border:1px solid var(--border); border-radius: 999px; color:var(--text); cursor:pointer;
+      transition: transform .1s ease, border-color .15s ease, box-shadow .2s ease; user-select:none;
+    }
+    .pill:hover{ transform: translateY(-1px); border-color: rgba(18,185,129,.4); box-shadow: var(--shadow-md) }
+    .pill input{ position:absolute; inset:0; opacity:0; cursor:pointer }
+    .pill.selected{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(18,185,129,.3) inset }
+    .tag{
+      font-size:11px; color:#a7f3d0; background: rgba(18,185,129,.08);
+      border:1px solid rgba(18,185,129,.3); padding:3px 7px; border-radius:999px; font-weight:800;
+    }
+    .tag.warn{ color:#fde68a; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.12); }
+    .tag.danger{ color:#fecaca; border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.12); }
+
+    /* Option blocks */
+    .option-section{ margin-top:8px; }
+    .option-title{ font-weight:800; margin:0 0 6px; color:var(--text-strong); }
+    .options{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 760px){ .options{ grid-template-columns: 1fr; } }
+    .opt{
+      position:relative; display:flex; gap:12px; align-items:flex-start; padding:12px; border:1px solid var(--border);
+      border-radius: var(--radius-sm); background:#0a1324; transition: border-color .15s ease, transform .1s ease, box-shadow .2s ease;
+    }
+    .opt:hover{ transform: translateY(-1px); border-color: rgba(18,185,129,.35); box-shadow: var(--shadow-md); }
+    .opt input[type="checkbox"], .opt input[type="radio"]{ margin-top:2px; width:18px; height:18px; accent-color: var(--accent); }
+    .opt .label{ font-weight:800 }
+    .opt .note{ color: var(--muted); font-size: 12px; }
+    .opt.disabled{ opacity:.55; filter:saturate(.8); cursor:not-allowed; }
+    .opt.disabled:hover{ transform:none; box-shadow:none; border-color: var(--border); }
+
+    /* Summary */
+    .summary{ background: linear-gradient(180deg, rgba(18,185,129,.06), transparent 40%); }
+    .row{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:10px 0; border-bottom: 1px dashed var(--border) }
+    .row:last-child{ border-bottom:0 }
+    .row .k{ color:var(--muted); font-size:13px; }
+    .row .v{ font-weight:800; }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .chip{
+      display:inline-flex; gap:8px; align-items:center; padding:7px 10px; border-radius:999px;
+      background:#0b1324; border:1px solid var(--border); color: var(--text); font-size:12px; font-weight:800;
+    }
+    .chip.power{ border-color: rgba(18,185,129,.45); background: rgba(18,185,129,.08); color:#bff3df }
+    .muted{ color: var(--muted); }
+    .danger{ color: var(--danger); }
+
+    /* Buttons */
+    .actions{ display:flex; gap:10px; justify-content:flex-end; padding-top:4px }
+    .btn{
+      display:inline-flex; align-items:center; gap:10px; border:1px solid var(--border); background:#0b1324; color:var(--text);
+      padding:10px 14px; border-radius: 12px; cursor:pointer; font-weight:800; letter-spacing:.3px;
+      transition: transform .1s ease, border-color .15s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .btn.primary{ background: linear-gradient(180deg, #13c296, #0ea97f); border-color: #0ea97f; color:#072116; }
+    .btn:focus{ outline:none; box-shadow: var(--focus); }
+    .btn:hover{ transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
+    footer{ text-align:center; color:var(--muted); font-size:12px; padding: 30px 0 50px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="title">Solaris — Konfigurator pojazdu</h1>
+    <p class="subtitle">Model → Generacja → Długość → Napęd → Wyposażenie → Styl. Kolidujące opcje są automatycznie blokowane.</p>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <div class="steps" aria-hidden="true">
+        <div class="step active"><span class="num">1</span> Model</div>
+        <div class="step"><span class="num">2</span> Generacja</div>
+        <div class="step"><span class="num">3</span> Długość</div>
+        <div class="step"><span class="num">4</span> Napęd</div>
+        <div class="step"><span class="num">5</span> Wyposażenie</div>
+        <div class="step"><span class="num">6</span> Styl</div>
+      </div>
+
+      <div class="section" id="step-model">
+        <h3>Wybierz rodzinę pojazdu</h3>
+        <div class="models" id="models"></div>
+      </div>
+
+      <div class="section" id="step-generation" aria-live="polite">
+        <h3>Wybierz generację</h3>
+        <p class="hint" id="gen-hint">Najpierw wybierz rodzinę pojazdu.</p>
+        <div class="pills" id="generations"></div>
+      </div>
+
+      <div class="section" id="step-length" aria-live="polite">
+        <h3>Wybierz długość</h3>
+        <p class="hint" id="length-hint">Najpierw wybierz generację.</p>
+        <div class="pills" id="lengths"></div>
+      </div>
+
+      <div class="section" id="step-powertrain" aria-live="polite">
+        <h3>Napęd</h3>
+        <p class="hint" id="powertrain-hint">Wybierz dokładnie jeden rodzaj napędu. Dla Trollino/Tramino napęd jest zdefiniowany.</p>
+        <div class="options" id="powertrain"></div>
+      </div>
+
+      <div class="section" id="step-equipment" aria-live="polite">
+        <h3>Wyposażenie i komfort</h3>
+        <p class="hint">Opcje można łączyć. Niedostępne dla danej konfiguracji są wyszarzone.</p>
+        <div class="options" id="equipment"></div>
+      </div>
+
+      <div class="section" id="step-style" aria-live="polite">
+        <h3>Styl i nadwozie</h3>
+        <p class="hint">Opcje stylistyczne, np. LE i MetroStyle.</p>
+        <div class="options" id="style"></div>
+
+        <div class="actions">
+          <button class="btn" id="reset">Wyczyść</button>
+          <button class="btn primary" id="finish">Zapisz konfigurację</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card summary" id="summary-card">
+      <div class="section">
+        <h3>Podsumowanie</h3>
+        <div class="row">
+          <div class="k">Rodzina</div>
+          <div class="v" id="sum-model"><span class="muted">nie wybrano</span></div>
+        </div>
+        <div class="row">
+          <div class="k">Generacja</div>
+          <div class="v" id="sum-gen"><span class="muted">—</span></div>
+        </div>
+        <div class="row">
+          <div class="k">Długość</div>
+          <div class="v" id="sum-length"><span class="muted">—</span></div>
+        </div>
+        <div class="row">
+          <div class="k">Napęd</div>
+          <div class="v" id="sum-power"><span class="muted">—</span></div>
+        </div>
+        <div class="row">
+          <div class="k">Wyposażenie</div>
+          <div class="v" id="sum-eq"><span class="muted">—</span></div>
+        </div>
+        <div class="row">
+          <div class="k">Styl</div>
+          <div class="v" id="sum-style"><span class="muted">—</span></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Walidacja</h3>
+        <div id="validation">
+          <div class="muted">Brak konfliktów.</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    Demo UI konfiguratora Solaris: Urbino / Trollino / Tramino (generacje, długości, napęd, wyposażenie, styl)
+  </footer>
+
+  <script>
+    // ====== Dane (modele, generacje, długości, opcje) ======
+    const DATA = {
+      models: [
+        {
+          id:'Urbino', desc:'Autobus miejski',
+          generations: [
+            { id:'I',  label:'I (1999–2002)', lengths:[
+              { id:'9 m', display:'9 m', status:'wycofany' },
+              { id:'12 m', display:'12 m' },
+              { id:'15 m', display:'15 m', status:'wycofany' },
+              { id:'18 m', display:'18 m' }
+            ]},
+            { id:'II', label:'II (2002–2005)', lengths:[
+              { id:'9 m', display:'9 m' },
+              { id:'10 m', display:'10 m' },
+              { id:'12 m', display:'12 m' },
+              { id:'18 m', display:'18 m' }
+            ]},
+            { id:'III', label:'III (2005–2014)', lengths:[
+              { id:'8,9 m', display:'8,9 m' },
+              { id:'10 m', display:'10 m' },
+              { id:'12 m', display:'12 m' },
+              { id:'15 m', display:'15 m' },
+              { id:'18 m', display:'18 m' },
+              { id:'13 m', display:'13 m', status:'specjalny' }
+            ]},
+            { id:'IV', label:'IV (2014–)', lengths:[
+              { id:'8,9 m', display:'8,9 m' },
+              { id:'10,5 m', display:'10,5 m' },
+              { id:'12 m', display:'12 m' },
+              { id:'15 m LE', display:'15 m LE' },
+              { id:'18 m', display:'18 m' },
+              { id:'18,75 m', display:'18,75 m' },
+              { id:'24 m', display:'24 m', status:'prototyp' }
+            ]}
+          ]
+        },
+        {
+          id:'Trollino', desc:'Trolejbus (sieć trakcyjna)',
+          generations: [
+            { id:'III', label:'III', lengths:[
+              { id:'12 m', display:'12 m' },
+              { id:'15 m', display:'15 m', status:'wycofany' },
+              { id:'18 m', display:'18 m' }
+            ]},
+            { id:'IV', label:'IV', lengths:[
+              { id:'12 m', display:'12 m' },
+              { id:'18 m', display:'18 m' },
+              { id:'24 m', display:'24 m', status:'specjalny' }
+            ]}
+          ]
+        },
+        {
+          id:'Tramino', desc:'Tramwaj niskopodłogowy',
+          generations: [
+            { id:'I', label:'I', lengths:[
+              { id:'24 m', display:'24 m' },
+              { id:'29 m', display:'29 m' },
+              { id:'32 m', display:'32 m' },
+              { id:'33 m', display:'33 m' }
+            ]}
+          ]
+        }
+      ],
+
+      // Sekcje opcji:
+      powertrainOrder: ['Diesel','CNG','Electric','Hydrogen'],
+      powertrain: [
+        { id:'Diesel',   label:'Diesel',    note:'Silnik wysokoprężny', allowedFor:['Urbino'], allowedGens:['I','II','III','IV'] },
+        { id:'CNG',      label:'CNG',       note:'Zasilanie sprężonym gazem', allowedFor:['Urbino'], allowedGens:['II','III','IV'] },
+        { id:'Electric', label:'Electric',  note:'Napęd bateryjny', allowedFor:['Urbino'], allowedGens:['III','IV'] },
+        { id:'Hydrogen', label:'Hydrogen',  note:'Ogniwa paliwowe (H₂)', allowedFor:['Urbino'], allowedGens:['IV'] }
+      ],
+
+      equipmentOrder: ['Battery','AirConditioning','EnergyRecovery','BrakeAssist'],
+      equipment: [
+        { id:'Battery',           label:'Battery pack',        note:'Zwiększona pojemność akumulatora trakcyjnego', allowedFor:['Urbino','Trollino'] },
+        { id:'AirConditioning',   label:'Klimatyzacja',        note:'Komfort pasażerów', allowedFor:['Urbino','Trollino','Tramino'] },
+        { id:'EnergyRecovery',    label:'Rekuperacja',         note:'Odzysk energii podczas hamowania', allowedFor:['Urbino','Trollino','Tramino'] },
+        { id:'BrakeAssist',       label:'Asystent hamowania',  note:'Wsparcie bezpieczeństwa', allowedFor:['Urbino','Trollino','Tramino'] }
+      ],
+
+      styleOrder: ['LE','MetroStyle'],
+      style: [
+        { id:'LE',         label:'LE — Low Entry', note:'Niskie wejście (częściowa niskopodłogowość)', allowedFor:['Urbino','Trollino'] },
+        { id:'MetroStyle', label:'MetroStyle',     note:'Charakterystyczny front stylistyczny', allowedFor:['Urbino','Trollino'] }
+      ],
+
+      incompat: {
+        Diesel:   ['CNG','Electric','Hydrogen'],
+        CNG:      ['Diesel','Electric','Hydrogen'],
+        Electric: ['Diesel','CNG','Hydrogen'],
+        Hydrogen: ['Diesel','CNG','Electric']
+      }
+    };
+
+    // ====== Stan ======
+    const state = {
+      model: null,
+      generation: null,
+      length: null,
+      powertrain: null,     // jeden z powertrain id
+      equipment: new Set(), // zbiór id
+      style: new Set()
+    };
+
+    // ====== DOM ======
+    const modelsEl   = document.getElementById('models');
+    const gensEl     = document.getElementById('generations');
+    const lengthsEl  = document.getElementById('lengths');
+    const powerEl    = document.getElementById('powertrain');
+    const equipEl    = document.getElementById('equipment');
+    const styleEl    = document.getElementById('style');
+
+    const genHint    = document.getElementById('gen-hint');
+    const lengthHint = document.getElementById('length-hint');
+    const powerHint  = document.getElementById('powertrain-hint');
+
+    const sumModel   = document.getElementById('sum-model');
+    const sumGen     = document.getElementById('sum-gen');
+    const sumLength  = document.getElementById('sum-length');
+    const sumPower   = document.getElementById('sum-power');
+    const sumEq      = document.getElementById('sum-eq');
+    const sumStyle   = document.getElementById('sum-style');
+    const validation = document.getElementById('validation');
+
+    const btnReset   = document.getElementById('reset');
+    const btnFinish  = document.getElementById('finish');
+
+    // ====== Render: modele ======
+    function renderModels(){
+      modelsEl.innerHTML = '';
+      DATA.models.forEach(m => {
+        const card = document.createElement('label');
+        card.className = 'model';
+        card.innerHTML = `
+          <input type="radio" name="model" value="${m.id}" />
+          <div class="name">${m.id}</div>
+          <div class="desc">${m.desc}</div>
+        `;
+        card.addEventListener('click', () => selectModel(m.id, card));
+        modelsEl.appendChild(card);
+      });
+    }
+
+    function selectModel(id, cardEl){
+      state.model = id;
+      state.generation = null;
+      state.length = null;
+      state.powertrain = null;
+      state.equipment.clear();
+      state.style.clear();
+
+      document.querySelectorAll('.model').forEach(el => el.classList.remove('selected'));
+      cardEl.classList.add('selected');
+
+      renderGenerations();
+      renderLengths();
+      renderPowertrain();
+      renderEquipment();
+      renderStyle();
+      updateSummary();
+      updateSteps();
+    }
+
+    // ====== Render: generacje ======
+    function renderGenerations(){
+      gensEl.innerHTML = '';
+      const model = DATA.models.find(m => m.id === state.model);
+      if(!model){
+        genHint.textContent = 'Najpierw wybierz rodzinę pojazdu.';
+        return;
+      }
+      genHint.textContent = 'Dostępne generacje dla wybranego modelu.';
+      model.generations.forEach(g => {
+        const pill = document.createElement('label');
+        pill.className = 'pill';
+        pill.innerHTML = `
+          <input type="radio" name="generation" value="${g.id}" />
+          <span>${g.label}</span>
+        `;
+        pill.addEventListener('click', () => {
+          state.generation = g.id;
+          state.length = null;
+          state.powertrain = null;
+          state.equipment.clear();
+          state.style.clear();
+
+          document.querySelectorAll('#generations .pill').forEach(p => p.classList.remove('selected'));
+          pill.classList.add('selected');
+
+          renderLengths();
+          renderPowertrain();
+          renderEquipment();
+          renderStyle();
+          updateSummary();
+          updateSteps();
+        });
+        gensEl.appendChild(pill);
+      });
+    }
+
+    // ====== Render: długości ======
+    function renderLengths(){
+      lengthsEl.innerHTML = '';
+      const model = DATA.models.find(m => m.id === state.model);
+      if(!model || !state.generation){
+        lengthHint.textContent = model ? 'Wybierz generację, by zobaczyć długości.' : 'Najpierw wybierz rodzinę pojazdu.';
+        return;
+      }
+      lengthHint.textContent = 'Wybierz długość dla wybranej generacji. Etykiety: wycofany / prototyp / specjalny.';
+      const gen = model.generations.find(g => g.id === state.generation);
+      gen.lengths.forEach(len => {
+        const item = typeof len === 'string' ? { id:len, display:len } : len;
+        const pill = document.createElement('label');
+        pill.className = 'pill';
+        pill.innerHTML = `
+          <input type="radio" name="length" value="${item.id}" />
+          <span>${item.display}</span>
+          ${item.status ? `<span class="tag ${ item.status==='wycofany' ? 'danger' : (item.status==='prototyp' ? 'warn' : '') }">${item.status}</span>` : ''}
+        `;
+        pill.addEventListener('click', () => {
+          state.length = item.id;
+          document.querySelectorAll('#lengths .pill').forEach(p => p.classList.remove('selected'));
+          pill.classList.add('selected');
+          updateSummary();
+          updateSteps();
+        });
+        lengthsEl.appendChild(pill);
+      });
+    }
+
+    // ====== Render: napęd ======
+    function renderPowertrain(){
+      powerEl.innerHTML = '';
+      const modelId = state.model;
+      const genId = state.generation;
+
+      if(!modelId){
+        powerHint.textContent = 'Najpierw wybierz rodzinę pojazdu.';
+        return;
+      }
+      if(!genId){
+        powerHint.textContent = 'Wybierz generację.';
+        return;
+      }
+
+      const isTrollino = modelId === 'Trollino';
+      const isTramino  = modelId === 'Tramino';
+
+      if(isTrollino || isTramino){
+        powerHint.textContent = isTrollino ? 'Trollino: napęd trolejbusowy (z sieci). Wybór paliwa nie dotyczy.' : 'Tramino: napęd elektryczny. Wybór paliwa nie dotyczy.';
+        // pokaż pasywną informację zamiast opcji
+        const info = document.createElement('div');
+        info.className = 'opt disabled';
+        info.innerHTML = `
+          <input type="radio" disabled />
+          <div>
+            <div class="label">${isTrollino ? 'Trolejbus' : 'Tramwaj elektryczny'}</div>
+            <div class="note">Napęd określony konstrukcyjnie — brak wyboru paliwa.</div>
+          </div>
+        `;
+        powerEl.appendChild(info);
+        state.powertrain = null; // czyszczę, bo nie dotyczy
+        updateSummary();
+        return;
+      } else {
+        powerHint.textContent = 'Wybierz dokładnie jeden rodzaj napędu.';
+      }
+
+      const list = DATA.powertrain
+        .filter(p => p.allowedFor.includes(modelId) && p.allowedGens.includes(genId))
+        .sort((a,b)=> DATA.powertrainOrder.indexOf(a.id) - DATA.powertrainOrder.indexOf(b.id));
+
+      list.forEach(p => {
+        const wrap = document.createElement('label');
+        wrap.className = 'opt';
+        wrap.setAttribute('data-pt', p.id);
+        wrap.innerHTML = `
+          <input type="radio" name="powertrain" ${state.powertrain===p.id ? 'checked' : ''} />
+          <div>
+            <div class="label">${p.label}</div>
+            <div class="note">${p.note}</div>
+          </div>
+        `;
+        const input = wrap.querySelector('input');
+        input.addEventListener('change', () => {
+          state.powertrain = p.id;
+          applyCompatibility();
+          updateSummary();
+        });
+        powerEl.appendChild(wrap);
+      });
+
+      applyCompatibility();
+      updateSummary();
+    }
+
+    // ====== Render: wyposażenie ======
+    function renderEquipment(){
+      equipEl.innerHTML = '';
+      const modelId = state.model;
+      if(!modelId){ return; }
+
+      const list = DATA.equipment
+        .filter(o => o.allowedFor.includes(modelId))
+        .sort((a,b)=> DATA.equipmentOrder.indexOf(a.id) - DATA.equipmentOrder.indexOf(b.id));
+
+      list.forEach(o => {
+        const wrap = document.createElement('label');
+        wrap.className = 'opt';
+        wrap.setAttribute('data-eq', o.id);
+        wrap.innerHTML = `
+          <input type="checkbox" ${state.equipment.has(o.id) ? 'checked' : ''} />
+          <div>
+            <div class="label">${o.label}</div>
+            <div class="note">${o.note}</div>
+          </div>
+        `;
+        const input = wrap.querySelector('input');
+        input.addEventListener('change', () => {
+          if(input.checked) state.equipment.add(o.id);
+          else state.equipment.delete(o.id);
+          applyCompatibility();
+          updateSummary();
+        });
+        equipEl.appendChild(wrap);
+      });
+
+      applyCompatibility();
+      updateSummary();
+    }
+
+    // ====== Render: styl ======
+    function renderStyle(){
+      styleEl.innerHTML = '';
+      const modelId = state.model;
+      const genId = state.generation;
+      if(!modelId){ return; }
+
+      const list = DATA.style
+        .filter(o => o.allowedFor.includes(modelId))
+        .sort((a,b)=> DATA.styleOrder.indexOf(a.id) - DATA.styleOrder.indexOf(b.id));
+
+      list.forEach(o => {
+        const wrap = document.createElement('label');
+        wrap.className = 'opt';
+        wrap.setAttribute('data-style', o.id);
+        // MetroStyle — dostępny sensownie dla nowszych generacji
+        let disabledByGen = false;
+        if(o.id === 'MetroStyle' && genId && ['I','II'].includes(genId)) disabledByGen = true;
+
+        wrap.innerHTML = `
+          <input type="checkbox" ${state.style.has(o.id) ? 'checked' : ''} ${disabledByGen ? 'disabled' : ''}/>
+          <div>
+            <div class="label">${o.label}</div>
+            <div class="note">${o.note}${disabledByGen ? ' (niedostępne dla tej generacji)' : ''}</div>
+          </div>
+        `;
+        const input = wrap.querySelector('input');
+        input.addEventListener('change', () => {
+          if(input.checked) state.style.add(o.id);
+          else state.style.delete(o.id);
+          applyCompatibility();
+          updateSummary();
+        });
+        if(disabledByGen) wrap.classList.add('disabled');
+        styleEl.appendChild(wrap);
+      });
+
+      applyCompatibility();
+      updateSummary();
+    }
+
+    // ====== Reguły kompatybilności ======
+    function applyCompatibility(){
+      const modelId = state.model;
+      const genId = state.generation;
+
+      // 1) Kolizje napędów (wzajemnie wykluczające się)
+      document.querySelectorAll('#step-powertrain .opt').forEach(wrap => {
+        const id = wrap.getAttribute('data-pt');
+        if(!id) return;
+        const input = wrap.querySelector('input[type="radio"]');
+        input.disabled = false; wrap.classList.remove('disabled');
+        if(state.powertrain && state.powertrain !== id){
+          // pozwalamy zmienić wybór (radio to i tak jeden)
+        }
+      });
+
+      // 2) Ukryj/wyłącz napędy nieobsługiwane dla generacji
+      document.querySelectorAll('#step-powertrain .opt').forEach(wrap => {
+        const id = wrap.getAttribute('data-pt');
+        if(!id) return;
+        const meta = DATA.powertrain.find(p => p.id === id);
+        const input = wrap.querySelector('input[type="radio"]');
+        if(genId && !meta.allowedGens.includes(genId)){
+          input.disabled = true; wrap.classList.add('disabled');
+          if(state.powertrain === id){ state.powertrain = null; input.checked = false; }
+        }
+      });
+
+      // 3) Drobne sensowne ograniczenia stylu
+      // LE tylko dla Urbino/Trollino (już w allowedFor), brak dodatkowej logiki.
+
+      refreshValidation();
+    }
+
+    // ====== Walidacja i komunikaty ======
+    function refreshValidation(){
+      const msgs = [];
+      const isTrollino = state.model === 'Trollino';
+      const isTramino  = state.model === 'Tramino';
+
+      if(!state.model) msgs.push('Wybierz rodzinę pojazdu.');
+      if(state.model && !state.generation) msgs.push('Wybierz generację.');
+      if(state.model && state.generation && !state.length) msgs.push('Wybierz długość.');
+
+      // Napęd wymagany dla Urbino (dokładnie jeden)
+      if(state.model === 'Urbino'){
+        if(!state.powertrain) msgs.push('Wybierz rodzaj napędu (Urbino).');
+      }
+
+      // Kolizje napędów (radio uniemożliwia, ale informacja dodatkowa)
+      if(state.powertrain && DATA.incompat[state.powertrain]){
+        const conf = DATA.incompat[state.powertrain].filter(x => x === state.powertrain);
+        if(conf.length){ msgs.push('Napędy wzajemnie się wykluczają.'); }
+      }
+
+      // Trollino/Tramino — brak wyboru paliwa
+      if((isTrollino || isTramino) && state.powertrain){
+        msgs.push(`${state.model}: napęd definiuje model — nie wybieraj paliwa.`);
+      }
+
+      validation.innerHTML = '';
+      if(msgs.length === 0){
+        const ok = document.createElement('div');
+        ok.className = 'muted';
+        ok.textContent = 'Brak konfliktów.';
+        validation.appendChild(ok);
+      } else {
+        msgs.forEach(m => {
+          const d = document.createElement('div');
+          d.className = 'danger';
+          d.textContent = m;
+          validation.appendChild(d);
+        });
+      }
+    }
+
+    // ====== Podsumowanie ======
+    function updateSummary(){
+      sumModel.textContent  = state.model || 'nie wybrano';
+      sumGen.textContent    = state.generation || '—';
+      sumLength.textContent = state.length || '—';
+
+      // Napęd
+      if(state.model === 'Trollino'){
+        sumPower.innerHTML = '<span class="chip power">Trolejbus</span>';
+      } else if(state.model === 'Tramino'){
+        sumPower.innerHTML = '<span class="chip power">Tram — elektryczny</span>';
+      } else if(state.powertrain){
+        const label = DATA.powertrain.find(p=>p.id===state.powertrain)?.label || state.powertrain;
+        sumPower.innerHTML = `<span class="chip power">${label}</span>`;
+      } else {
+        sumPower.innerHTML = '<span class="muted">—</span>';
+      }
+
+      // Wyposażenie
+      const eq = [...state.equipment];
+      if(eq.length === 0){
+        sumEq.innerHTML = '<span class="muted">—</span>';
+      } else {
+        sumEq.innerHTML = '';
+        eq.sort((a,b)=> DATA.equipmentOrder.indexOf(a)-DATA.equipmentOrder.indexOf(b))
+          .forEach(id => {
+            const label = DATA.equipment.find(o=>o.id===id)?.label || id;
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = label;
+            sumEq.appendChild(chip);
+          });
+      }
+
+      // Styl
+      const st = [...state.style];
+      if(st.length === 0){
+        sumStyle.innerHTML = '<span class="muted">—</span>';
+      } else {
+        sumStyle.innerHTML = '';
+        st.sort((a,b)=> DATA.styleOrder.indexOf(a)-DATA.styleOrder.indexOf(b))
+          .forEach(id => {
+            const label = DATA.style.find(o=>o.id===id)?.label || id;
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = label;
+            sumStyle.appendChild(chip);
+          });
+      }
+    }
+
+    // ====== Kroki ======
+    function updateSteps(){
+      const steps = document.querySelectorAll('.steps .step');
+      steps.forEach(s => s.classList.remove('active'));
+      if(!state.model){ steps[0].classList.add('active'); return; }
+      if(!state.generation){ steps[1].classList.add('active'); return; }
+      if(!state.length){ steps[2].classList.add('active'); return; }
+      if(state.model==='Urbino' && !state.powertrain){ steps[3].classList.add('active'); return; }
+      // jeśli Trollino/Tramino, pomijamy aktywny „Napęd”
+      if([...state.equipment].length === 0){ steps[4].classList.add('active'); return; }
+      steps[5].classList.add('active');
+    }
+
+    // ====== Reset / Zapis ======
+    btnReset.addEventListener('click', ()=>{
+      state.model = null;
+      state.generation = null;
+      state.length = null;
+      state.powertrain = null;
+      state.equipment.clear();
+      state.style.clear();
+
+      document.querySelectorAll('.model').forEach(m => m.classList.remove('selected'));
+      gensEl.innerHTML = ''; lengthsEl.innerHTML = '';
+      renderPowertrain(); renderEquipment(); renderStyle();
+      updateSummary(); updateSteps();
+    });
+
+    btnFinish.addEventListener('click', ()=>{
+      const payload = {
+        model: state.model,
+        generation: state.generation,
+        length: state.length
